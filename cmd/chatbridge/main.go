@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/lioilsources/chatbridge/internal/config"
+	"github.com/lioilsources/chatbridge/internal/twitch"
 )
 
 func main() {
@@ -51,6 +52,17 @@ func main() {
 	// SIGINT/SIGTERM cancel the root context and trigger graceful shutdown.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// Twitch ingest — phase 1 just logs each message; the parser consumes it
+	// in phase 2. Runs until ctx is cancelled, reconnecting on its own.
+	tw := twitch.New(cfg.Twitch.Channel, func(m twitch.Message) {
+		slog.Info("chat", "user", m.User, "text", m.Text)
+	}, slog.Default())
+	go func() {
+		if err := tw.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			slog.Error("twitch ingest stopped", "err", err)
+		}
+	}()
 
 	go func() {
 		slog.Info("http server listening", "addr", cfg.Server.Addr)
