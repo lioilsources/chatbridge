@@ -1,7 +1,7 @@
 // Command chatbridge is the Twitch-chat → Luanti bridge service.
 //
-// Phase 0: config, /healthz, structured logging, graceful shutdown. Twitch
-// ingest, the event queue and the rest arrive in later phases.
+// Pipeline: anonymous Twitch ingest → parse against the action catalog → rate
+// limits → in-memory event queue, which the Luanti mod polls via GET /events.
 package main
 
 import (
@@ -15,7 +15,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/lioilsources/chatbridge/internal/api"
 	"github.com/lioilsources/chatbridge/internal/config"
+	"github.com/lioilsources/chatbridge/internal/queue"
 	"github.com/lioilsources/chatbridge/internal/rules"
 	"github.com/lioilsources/chatbridge/internal/twitch"
 )
@@ -38,15 +40,11 @@ func main() {
 		"addr", cfg.Server.Addr,
 		"actions", len(cfg.Actions))
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		_, _ = w.Write([]byte("ok"))
-	})
-
+	// The event log the mod polls, and the HTTP surface over it.
+	q := queue.New(cfg.Limits.QueueSize)
 	srv := &http.Server{
 		Addr:              cfg.Server.Addr,
-		Handler:           mux,
+		Handler:           api.New(q, nil).Routes(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -54,8 +52,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Chat → intent → limits. Unknown commands are dropped silently; the
-	// bridge never writes back to chat. Phase 3 enqueues accepted actions.
+	// Chat → intent → limits → queue. Unknown commands are dropped silently;
+	// the bridge never writes back to chat.
 	catalog := rules.NewCatalog(cfg.Actions)
 	limiter := rules.NewLimiter(cfg.Limits, rules.SystemClock())
 
@@ -70,8 +68,14 @@ func main() {
 			slog.Debug("action dropped", "action", action.Name, "reason", reason.String())
 			return
 		}
-		slog.Info("action accepted", "action", action.Name, "type", action.Type)
-		// phase 3: turn this into an Event and push it on the queue
+		seq := q.Push(queue.Event{
+			TS:     time.Now().Unix(),
+			Type:   action.Type,
+			Action: action.Name,
+			Params: action.Params,
+			TTL:    action.TTL,
+		})
+		slog.Info("action enqueued", "seq", seq, "action", action.Name, "type", action.Type)
 	}, slog.Default())
 	go func() {
 		if err := tw.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
