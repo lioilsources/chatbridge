@@ -1,0 +1,5 @@
+/chatbridge
+/cmd/chatbridge/chatbridge
+*.exe
+.DS_Store
+config.yaml

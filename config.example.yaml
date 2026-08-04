@@ -1,0 +1,32 @@
+server:
+  addr: ":8093"
+  admin_token: "change-me"           # protects /admin/* via X-Bridge-Token
+
+twitch:
+  channel: "your_streamer_name"      # anonymous read-only, no OAuth
+
+limits:
+  user_cooldown_sec: 30
+  global_actions_per_min: 20
+  max_live_entities: 40
+  queue_size: 500
+
+mode:
+  auto_switch: true
+  vote_threshold_msgs_per_min: 60    # above this rate → switch to voting
+  vote_duration_sec: 20
+
+# The action catalog is pure data. Adding an action needs no Go change.
+actions:
+  - name: chicken
+    aliases: ["!kure", "!chicken"]
+    type: spawn
+    params: { entity: "mobs:chicken", count: 1 }
+    ttl: 60
+    weight: 1                        # weight when voting
+  - name: rain
+    aliases: ["!dest", "!rain"]
+    type: weather
+    params: { weather: "rain", duration: 30 }
+    ttl: 0
+    weight: 1
