@@ -18,8 +18,16 @@ local function check(cond, msg)
 	end
 end
 
--- Build a fresh mocked `core` and (re)load the mod.
-local function load_mod()
+-- Build a fresh mocked `core` and (re)load the mod. opts.settings is a table
+-- of setting values; opts.players overrides the connected-players list.
+local settings_values, players
+local function load_mod(opts)
+	opts = opts or {}
+	settings_values = opts.settings or {}
+	players = opts.players
+	if players == nil then
+		players = { { get_pos = function() return { x = 0, y = 10, z = 0 } end } }
+	end
 	scheduled, added, fetches, fake_result, canned = {}, {}, {}, nil, nil
 	math.randomseed(1)
 	_G.core = {
@@ -36,10 +44,8 @@ local function load_mod()
 			scheduled[#scheduled + 1] = { fn = fn, args = { ... } }
 		end,
 		log = function() end,
-		settings = { get = function() return nil end },
-		get_connected_players = function()
-			return { { get_pos = function() return { x = 0, y = 10, z = 0 } end } }
-		end,
+		settings = { get = function(_, k) return settings_values[k] end },
+		get_connected_players = function() return players end,
 		add_entity = function(pos, name)
 			added[#added + 1] = { pos = pos, name = name }
 			return {} -- non-nil = success
@@ -98,6 +104,41 @@ step() -- check_pending → process → reset
 check(#added == 0, "reset applies no events")
 step() -- next poll
 check(fetches[2] and fetches[2].url:find("since=42"), "after reset, fetch uses since=latest (42)")
+
+---------------------------------------------------------------------------
+print("scenario: fallback spawn point used when no players online")
+load_mod({ settings = { chatbridge_spawn_fallback = "0,8,0" }, players = {} })
+step() -- poll
+canned = {
+	events = {
+		{ seq = 1, type = "spawn", action = "rocks",
+			params = { entity = "test:rock", count = 2 }, ttl = 10 },
+	},
+	latest = 1,
+}
+complete_ok()
+step() -- process → spawn at fallback
+check(#added == 2, "empty world + fallback spawns 2 (got " .. #added .. ")")
+do
+	local d = math.sqrt(added[1].pos.x ^ 2 + added[1].pos.z ^ 2)
+	check(d >= 5 and d <= 15, "fallback spawn distance within [5,15]")
+	check(added[1].pos.y == 9, "fallback spawn y = 8 + 1")
+end
+
+---------------------------------------------------------------------------
+print("scenario: no players and no fallback → nothing spawns")
+load_mod({ players = {} })
+step()
+canned = {
+	events = {
+		{ seq = 1, type = "spawn", action = "rocks",
+			params = { entity = "test:rock", count = 2 }, ttl = 10 },
+	},
+	latest = 1,
+}
+complete_ok()
+step()
+check(#added == 0, "empty world without a fallback spawns nothing")
 
 ---------------------------------------------------------------------------
 print("scenario: HTTP error is logged, not applied")

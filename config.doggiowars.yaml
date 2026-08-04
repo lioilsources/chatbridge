@@ -1,0 +1,44 @@
+# chatbridge catalog for DoggioWars — commands map to real DoggioWars entities.
+# Point the mod at a world running the doggiowars mod. See README / PLAN.
+server:
+  addr: ":8093"
+  admin_token: "change-me"
+
+twitch:
+  channel: "your_streamer_name"
+
+limits:
+  user_cooldown_sec: 20
+  global_actions_per_min: 30
+  max_live_entities: 30
+  queue_size: 500
+
+mode:
+  auto_switch: true
+  vote_threshold_msgs_per_min: 60
+  vote_duration_sec: 20
+
+actions:
+  # Golden rabbit — the race target; here it just appears and hovers (glowing).
+  - name: rabbit
+    aliases: ["!rabbit", "!zajic", "!bunny"]
+    type: spawn
+    params: { entity: "doggiowars:rabbit", count: 1 }
+    ttl: 45
+    weight: 2
+
+  # A little squadron of golden rabbits.
+  - name: swarm
+    aliases: ["!swarm", "!hejno"]
+    type: spawn
+    params: { entity: "doggiowars:rabbit", count: 3 }
+    ttl: 30
+    weight: 1
+
+  # A brief rock shower around the pilot (debris falls and self-destructs).
+  - name: rocks
+    aliases: ["!rocks", "!debris", "!kamen"]
+    type: spawn
+    params: { entity: "doggiowars:debris", count: 5 }
+    ttl: 10
+    weight: 1

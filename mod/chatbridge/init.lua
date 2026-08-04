@@ -23,6 +23,19 @@ local MAX_EVENTS = 50
 local SPAWN_R_MIN, SPAWN_R_MAX = 5, 15 -- spawn ring around the player
 local SPAWN_COUNT_CAP = 10 -- hard cap regardless of params.count
 
+-- Optional fixed spawn point used ONLY when no players are online (showcase /
+-- testing). Empty = skip spawns when the world is empty. Format "x,y,z".
+local SPAWN_FALLBACK
+do
+	local raw = core.settings:get("chatbridge_spawn_fallback")
+	if raw then
+		local x, y, z = raw:match("^%s*(-?%d+)%s*,%s*(-?%d+)%s*,%s*(-?%d+)%s*$")
+		if x then
+			SPAWN_FALLBACK = { x = tonumber(x), y = tonumber(y), z = tonumber(z) }
+		end
+	end
+end
+
 local last_seq = 0 -- highest event seq we have applied
 
 ---------------------------------------------------------------------------
@@ -38,19 +51,23 @@ local function handle_spawn(ev)
 		return
 	end
 	local players = core.get_connected_players()
-	if #players == 0 then
-		return -- nobody online to spawn near
+	if #players == 0 and not SPAWN_FALLBACK then
+		return -- nobody online and no fallback point
 	end
 	local count = math.max(1, math.min(tonumber(params.count) or 1, SPAWN_COUNT_CAP))
 	for _ = 1, count do
-		local player = players[math.random(#players)]
-		local p = player:get_pos()
+		local base
+		if #players > 0 then
+			base = players[math.random(#players)]:get_pos()
+		else
+			base = SPAWN_FALLBACK
+		end
 		local ang = math.random() * math.pi * 2
 		local r = SPAWN_R_MIN + math.random() * (SPAWN_R_MAX - SPAWN_R_MIN)
 		local pos = {
-			x = p.x + math.cos(ang) * r,
-			y = p.y + 1,
-			z = p.z + math.sin(ang) * r,
+			x = base.x + math.cos(ang) * r,
+			y = base.y + 1,
+			z = base.z + math.sin(ang) * r,
 		}
 		if not core.add_entity(pos, entity) then
 			core.log("warning", "[chatbridge] add_entity failed for " .. entity)
