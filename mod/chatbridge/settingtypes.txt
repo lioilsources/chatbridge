@@ -1,0 +1,5 @@
+# Base URL of the chatbridge service this mod polls for events.
+# The mod also requires being whitelisted for HTTP:
+#   secure.http_mods = chatbridge
+# in minetest.conf (with secure.enable_security = true).
+chatbridge_url (Bridge URL) string http://127.0.0.1:8093
