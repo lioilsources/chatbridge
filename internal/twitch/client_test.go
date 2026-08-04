@@ -69,11 +69,11 @@ func TestBackoffGrowsAndCaps(t *testing.T) {
 
 	// exponential from base, capped at max
 	want := map[int]time.Duration{
-		0: 1 * time.Second,
-		1: 2 * time.Second,
-		2: 4 * time.Second,
-		5: 32 * time.Second,
-		6: 60 * time.Second, // 64s → capped
+		0:  1 * time.Second,
+		1:  2 * time.Second,
+		2:  4 * time.Second,
+		5:  32 * time.Second,
+		6:  60 * time.Second, // 64s → capped
 		20: 60 * time.Second,
 	}
 	for attempt, exp := range want {

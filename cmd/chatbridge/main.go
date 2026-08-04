@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/lioilsources/chatbridge/internal/config"
+	"github.com/lioilsources/chatbridge/internal/rules"
 	"github.com/lioilsources/chatbridge/internal/twitch"
 )
 
@@ -53,10 +54,24 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Twitch ingest — phase 1 just logs each message; the parser consumes it
-	// in phase 2. Runs until ctx is cancelled, reconnecting on its own.
+	// Chat → intent → limits. Unknown commands are dropped silently; the
+	// bridge never writes back to chat. Phase 3 enqueues accepted actions.
+	catalog := rules.NewCatalog(cfg.Actions)
+	limiter := rules.NewLimiter(cfg.Limits, rules.SystemClock())
+
 	tw := twitch.New(cfg.Twitch.Channel, func(m twitch.Message) {
-		slog.Info("chat", "user", m.User, "text", m.Text)
+		action, ok := catalog.Parse(m.Text)
+		if !ok {
+			return // not a command
+		}
+		isSpawn := action.Type == "spawn"
+		ttl := time.Duration(action.TTL) * time.Second
+		if ok, reason := limiter.Allow(rules.HashUser(m.User), isSpawn, ttl); !ok {
+			slog.Debug("action dropped", "action", action.Name, "reason", reason.String())
+			return
+		}
+		slog.Info("action accepted", "action", action.Name, "type", action.Type)
+		// phase 3: turn this into an Event and push it on the queue
 	}, slog.Default())
 	go func() {
 		if err := tw.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
