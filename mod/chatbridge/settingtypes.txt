@@ -1,9 +1,20 @@
 # Base URL of the chatbridge service this mod polls for events.
-# The mod also requires being whitelisted for HTTP:
+# Unset = the mod stays dormant, which is what most players want.
+#
+# It also has to be whitelisted for HTTP:
 #   secure.http_mods = chatbridge
-# in minetest.conf (with secure.enable_security = true).
-chatbridge_url (Bridge URL) string http://127.0.0.1:8093
+# in YOUR minetest.conf (with secure.enable_security = true). A game cannot
+# grant this to itself — Luanti drops secure.* coming from a game config.
+chatbridge_url (Bridge URL) string
 
 # Optional fixed spawn point "x,y,z" used only when no players are online
 # (showcase / testing). Empty = do nothing when the world is empty.
 chatbridge_spawn_fallback (Fallback spawn point when empty) string
+
+# Radius in blocks around the protected centre where chat may not spawn
+# anything, so nobody gets swarmed the moment they land there.
+chatbridge_protect_radius (Protected zone radius) int 40 0 512
+
+# Centre of that zone, "x,y,z". Falls back to static_spawnpoint; with neither
+# set the zone stays off (there is no sensible place to guess).
+chatbridge_protect_center (Protected zone centre) string

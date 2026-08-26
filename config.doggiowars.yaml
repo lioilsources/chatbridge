@@ -1,5 +1,12 @@
-# chatbridge catalog for DoggioWars — commands map to real DoggioWars entities.
-# Point the mod at a world running the doggiowars mod. See README / PLAN.
+# chatbridge catalog for DoggioWars.
+#
+# DoggioWars is a standalone Luanti *game* (mods/dw_core), but its entities are
+# still registered in the global namespace as ":doggiowars:*" — so these names
+# survived the mod → game rename and are what add_entity expects.
+#
+# Monsters need to be bound to an island or they despawn within a second;
+# dw_core does that through chatbridge.register_on_spawn, so nothing here
+# has to know about it.
 server:
   addr: ":8093"
   admin_token: "change-me"
@@ -10,6 +17,8 @@ twitch:
 limits:
   user_cooldown_sec: 20
   global_actions_per_min: 30
+  # Dragons and jellyfish are chains of 5-9 entities each, so the visible
+  # creature count is far lower than this number.
   max_live_entities: 30
   queue_size: 500
 
@@ -19,7 +28,81 @@ mode:
   vote_duration_sec: 20
 
 actions:
-  # Golden rabbit — the race target; here it just appears and hovers (glowing).
+  # --- dragons: one per element, they circle the nearest island ------------
+  - name: dragon_fire
+    aliases: ["!drak", "!dragon", "!fire"]
+    type: spawn
+    params: { entity: "doggiowars:dragon_fire", count: 1 }
+    ttl: 90
+    weight: 3
+
+  - name: dragon_ice
+    aliases: ["!led", "!ice"]
+    type: spawn
+    params: { entity: "doggiowars:dragon_ice", count: 1 }
+    ttl: 90
+    weight: 2
+
+  - name: dragon_water
+    aliases: ["!voda", "!water"]
+    type: spawn
+    params: { entity: "doggiowars:dragon_water", count: 1 }
+    ttl: 90
+    weight: 2
+
+  - name: dragon_mud
+    aliases: ["!bahno", "!mud"]
+    type: spawn
+    params: { entity: "doggiowars:dragon_mud", count: 1 }
+    ttl: 90
+    weight: 2
+
+  - name: dragon_electric
+    aliases: ["!blesk", "!electric", "!zap"]
+    type: spawn
+    params: { entity: "doggiowars:dragon_electric", count: 1 }
+    ttl: 90
+    weight: 2
+
+  # The whole flight at once — the expensive one, so it is rarer in votes.
+  - name: dragons
+    aliases: ["!draci", "!dragons"]
+    type: spawn
+    params: { entity: "doggiowars:dragon_fire", count: 3 }
+    ttl: 60
+    weight: 1
+
+  # --- the rest of the bestiary -------------------------------------------
+  - name: whale
+    aliases: ["!velryba", "!whale"]
+    type: spawn
+    params: { entity: "doggiowars:whale", count: 1 }
+    ttl: 120
+    weight: 2
+
+  - name: jelly
+    aliases: ["!meduzy", "!jelly"]
+    type: spawn
+    params: { entity: "doggiowars:jelly_glow", count: 3 }
+    ttl: 90
+    weight: 2
+
+  - name: worm
+    aliases: ["!cerv", "!worm"]
+    type: spawn
+    params: { entity: "doggiowars:worm", count: 1 }
+    ttl: 60
+    weight: 1
+
+  - name: guardian
+    aliases: ["!strazce", "!guardian"]
+    type: spawn
+    params: { entity: "doggiowars:guardian", count: 1 }
+    ttl: 60
+    weight: 1
+
+  # --- classics -----------------------------------------------------------
+  # The golden hare from the race, here just a glowing visitor.
   - name: rabbit
     aliases: ["!rabbit", "!zajic", "!bunny"]
     type: spawn
@@ -27,18 +110,11 @@ actions:
     ttl: 45
     weight: 2
 
-  # A little squadron of golden rabbits.
-  - name: swarm
-    aliases: ["!swarm", "!hejno"]
-    type: spawn
-    params: { entity: "doggiowars:rabbit", count: 3 }
-    ttl: 30
-    weight: 1
-
-  # A brief rock shower around the pilot (debris falls and self-destructs).
+  # Rock shower around the pilot. Debris manages its own ~4 s lifetime and
+  # falls out of the sky, so ttl is 0 (nothing for the mod to reclaim).
   - name: rocks
-    aliases: ["!rocks", "!debris", "!kamen"]
+    aliases: ["!rocks", "!debris", "!kameny"]
     type: spawn
     params: { entity: "doggiowars:debris", count: 5 }
-    ttl: 10
+    ttl: 0
     weight: 1
